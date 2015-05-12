@@ -69,15 +69,14 @@ struct vector {
 };
 
 FILE *fd;
-double *P2;
 
 void print_out (struct output *out, double t) {
-    fprintf(fd,"%f \t",out->t);
+    //fprintf(fd,"%f \t",out->t);
     fprintf(fd,"%f \t",out->s);	
     //printf("%f \t %f \t %f \t",out->Va,out->Vb,out->Vc);
     //printf("%f \t %f \t %f \t",out->ia,out->ib,out->ic);
-    fprintf(fd,"%f\t",out->v);
-    fprintf(fd,"%f\n",out->P);
+    fprintf(fd,"%f\n",out->v);
+    //fprintf(fd,"%f\n",out->P);
     //printf("%f\t",out->phi);
     //printf("%f \t %f \t %f \t",out->bEMFa,out->bEMFb,out->bEMFc);
     //printf("%f\t",out->Te);
@@ -239,7 +238,7 @@ void step_diff (struct vector *v, struct input *in, struct output *out,struct pa
 void motor_eq (double t, struct input *in, struct param *parms, double h) {
 
 	double i,w_last,t_last,phih,rest,P,*PP,mean,change,P_last;
-	int j,k,Plen,interv;
+	int j,k,Plen,interv,runs=0;
 	
 	struct output out;
 	struct vector v_next;
@@ -278,13 +277,16 @@ void motor_eq (double t, struct input *in, struct param *parms, double h) {
 		out.Te = out.a * parms->J;
 		out.s = v_next.s;
 		out.P = v_next.P;
-	}
 
-	print_out(&out,t);		
+		if ((runs % 1000) == 0) {
+			print_out(&out,t);
+		}
+		runs++;
+	}
 }
 
 
-void setparms (struct param *parms) {
+void setparms (struct param *parms, float var_parms[]) {
 
 	parms->Vd = 40.0;
 	parms->p = 42.0; 
@@ -300,6 +302,14 @@ void setparms (struct param *parms) {
 	parms->kt = 0.75;
 	parms->J = 0.102;
 	parms->B = 0.01;
+/*
+	parms->R = var_parms[0];
+	parms->L = var_parms[1];
+	parms->kw = var_parms[2];	
+	parms->kt = var_parms[3];
+	parms->J = var_parms[4];
+	parms->B = var_parms[5];
+*/
 }
 
 
@@ -307,28 +317,29 @@ void main (int argc, char* argv[]) {
 
 	struct param parms;
 	struct input in;
-	int t,iter,i;
+	int t,iter,i=0;
 	int pos = 0;
 	double h = 0.00025;
-    	t = atoi(argv[1]);
+	float var_parms[6];
+	float parm;
 
-	setparms(&parms);
+    	t = atoi(argv[1]);	
+	FILE *parmfile = fopen(argv[2],"r");
+
+
+	while(fscanf(parmfile,"%f\n",&parm) != EOF) {	
+		var_parms[i] = parm;
+		printf("%f\n",var_parms[i]);
+		i++;
+	}
+
+	setparms(&parms,var_parms);
 
 	in.T_load = 0;
+	fd = fopen("model_data","w");
+	motor_eq(t,&in,&parms,h);
+	return;	
 
-	fd = stdout;
-	motor_eq(t,&in,&parms,h);	
-/*
-	for (i=0;i<20;i++) {
-		h = 0.0001 + (i*0.0005);
-		char* fname = (char*)calloc(sizeof(char),10);
-		sprintf(fname,"%f.txt",h);
-		fd = fopen(fname,"w+");
-		
-		printf("Go through model with %f\n",h);
-	}
-*/
-	return;
 }
 
 
